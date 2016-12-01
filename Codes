@@ -1,2 +1,190 @@
 # BlackJack
 
+#include <iostream>
+#include <string>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <sstream>
+
+#define NUM_CARDS 52        //number of cards in a deck
+#define MAX_HAND_SIZE 5     //constant to represent maximum number of cards that can be held (=5)
+
+using namespace std;    // needed for CodeBlocks compatibility
+
+class Card          // Card class
+{
+private:
+    int value;      //numerical value of card (worth)
+    string suit;    //heart, diamond, club or spade
+    string rank;    //2-10, Jack, Queen or King
+    bool dealt;     //each card can only be 'played' once
+public:
+    void initialise(int value_in,string suit_in,string rank_in);
+    void setDealt(){ dealt=true;}
+    int getValue(){ return value;}
+    string getSuit(){ return suit;}
+    string getRank(){ return rank;}
+    bool getDealt(){ return dealt;}
+};
+
+void Card::initialise(int value_in,string suit_in,string rank_in){
+    value=value_in;
+    suit=suit_in;
+    rank=rank_in;
+    dealt=false;
+}
+
+class Player            // both Punter and Dealer will be objects of type Player class
+{
+private:
+    int size_hand;              //number of cards held by Player
+    Card hand[MAX_HAND_SIZE];   //array of 5 Card objects
+public:
+    Player();                       //constructor
+    Card getCard(int index);
+    void deal(Card deck[NUM_CARDS]);
+    int computePoints();
+    void saveCard(int index,Card new_card);
+    int getSizeHand(){ return size_hand;}
+    void printCard(int index);
+};
+
+Player::Player(){
+    size_hand = 0;
+    for(int i=0; i<MAX_HAND_SIZE; i++){
+        hand[i].initialise(0,"","");    //set the data for each Card object to 'empty'/zero values
+    }
+}
+
+int Player::computePoints(){    //calculate how many points the player has in their hand
+    int total=0;
+    for(int i=0;i<5;i++)total+=(hand[i].getValue());
+    return total;
+}
+
+void Player::saveCard(int index,Card new_card){
+    hand[index]=new_card;   //update player's hand with new card
+}
+
+void Player::deal(Card deck[NUM_CARDS]){    //randomly select a previously unplayed card object from the deck and update player's hand
+    int card = (rand()%52)+1;
+    if(deck[card].getDealt()==true){
+        // randomly chosen card has already been dealt- "deal" again
+        deal(deck);
+    }else{
+        deck[card].setDealt();
+        hand[size_hand]=deck[card];
+        size_hand++;
+    }
+}
+
+Card Player::getCard(int index){
+    return hand[index];
+}
+
+void Player::printCard(int index_p){    //print out card that was dealt (don't want to do for dealer's second card- rules of game)
+    Card c1 = hand[index_p];
+    cout<<" Dealt: "<<c1.getRank()<<" of "<<c1.getSuit()<<", worth "<<c1.getValue()<<" points\n";
+}
+
+void initialiseSuit(Card deck[NUM_CARDS],int index_in, string suit_in); //function prototype: initialise one suit of the deck (i.e., hearts, diamonds, clubs or spades)
+void printDeck(Card deck[NUM_CARDS]);                                   //function prototype: print deck to make sure initialised properly
+
+int main(void){
+    srand(time(NULL));
+
+    Card deck[NUM_CARDS];   //create array of 52 Card objects
+
+    Player dealer;
+    Player punter;
+
+    char play_again='Y';
+
+    initialiseSuit(deck,0,"spades");
+    initialiseSuit(deck,13,"hearts");
+    initialiseSuit(deck,26,"diamonds");
+    initialiseSuit(deck,39,"clubs");
+    //printDeck(deck);  /* uncomment to check if setting up deck worked correctly */
+
+    dealer.deal(deck);
+    dealer.deal(deck); /* dealer gets two cards but only one is public */
+    cout << "Dealer's first card is: "<< (dealer.getCard(0)).getValue()<<"\n";
+    dealer.printCard(0);
+
+
+    while(punter.computePoints()<21 && play_again=='Y' && punter.getSizeHand()<MAX_HAND_SIZE)
+    {
+        cout <<"Punter, you have " << punter.computePoints() << " points! Get another card? (Y/N)\n";
+        cin >> play_again;
+        if(play_again=='Y'){
+            punter.deal(deck);
+            punter.printCard(punter.getSizeHand()-1);   // need to include -1 since array index is 1 less than number of cards
+        }
+    }
+
+    /* once get to here player 1 has either burst, gotten 21 or decided to stay */
+
+    if(punter.computePoints()>21)
+    {
+        cout << "You're BUSTED!! with "<<punter.computePoints()<<" points\n";
+        return 0;
+    }
+
+    /* once get to here, dealer needs to be dealt another card if they have 16 or less and stay if they have 17 or more */
+
+    cout<<"Dealer has "<< dealer.computePoints() <<" points!\n";
+    while((dealer.computePoints()<=16 || (!dealer.computePoints()>21))&&dealer.getSizeHand()<MAX_HAND_SIZE)
+    {
+        /* deal cards to dealer until get to 17 or more */
+        cout<< "Mandatory deal for dealer\n";
+        dealer.deal(deck);
+        dealer.printCard(dealer.getSizeHand()-1);
+        cout<< "Dealer has "<< dealer.computePoints() <<" points!\n";
+    }
+    if(dealer.computePoints()>21)
+    {
+        cout<< "Congrats player, you win with "<< punter.computePoints() <<" points! House is BUSTED with "<< dealer.computePoints() << "points\n";
+    }
+    else if(punter.computePoints()>dealer.computePoints())
+    {
+        cout<< "Congrats player, you win with "<< punter.computePoints() <<" points! House loses with "<< dealer.computePoints() << "points\n";
+    }
+    else if(punter.computePoints()<dealer.computePoints())
+    {
+        cout<< "Sorry, player, you lose with "<< punter.computePoints() <<" points. House wins with "<< dealer.computePoints() << "points\n";
+    }
+    else if(punter.computePoints()==dealer.computePoints())
+    {
+        cout<< "It's a draw at " << punter.computePoints() <<" points!\n";
+    }
+
+    return 0;
+}
+
+void initialiseSuit(Card deck[NUM_CARDS],int index_in, string suit_in){
+    for(int i=index_in;i<(index_in+13);i++){
+        if(i==index_in){
+            //Ace
+            deck[i].initialise(1,suit_in,"Ace");
+        }else if ((i%13)<=9){
+            //Number card
+            stringstream ss;
+            ss << ((i%13)+1);
+            deck[i].initialise(((i%13)+1),suit_in,ss.str());
+        }else if ((i%13)==10){
+            deck[i].initialise(10,suit_in,"Jack");
+        }else if ((i%13)==11){
+            deck[i].initialise(10,suit_in,"Queen");
+        }else if ((i%13)==12){
+            deck[i].initialise(10,suit_in,"King");
+        }
+    }
+}
+
+void printDeck(Card deck[NUM_CARDS]){
+    for(int i=0;i<NUM_CARDS;i++){
+        cout<<"Card "<<i<<" Value: "<<deck[i].getValue()<<" Rank: "<<deck[i].getRank()<<" Suit: "<<deck[i].getSuit()<<"\n";
+    }
+}
